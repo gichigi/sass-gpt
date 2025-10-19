@@ -1,7 +1,27 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
-  "private": true,
+  "name": "sass-gpt",
+  "version": "1.0.0",
+  "description": "AI chat application with sassy personalities - featuring The Teenager, The Grandma, The Intellectual, and The Exec",
+  "private": false,
+  "author": "SassGPT Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gichigi/sass-gpt.git"
+  },
+  "keywords": [
+    "AI",
+    "ChatGPT",
+    "SassGPT",
+    "AI Chat",
+    "Personality AI",
+    "Sassy AI",
+    "AI with Attitude",
+    "Next.js",
+    "OpenAI",
+    "TypeScript"
+  ],
+  "homepage": "https://sass-gpt.vercel.app",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -70,6 +90,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "postcss": "^8.5",
+    "sharp": "^0.33.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
   }

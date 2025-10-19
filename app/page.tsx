@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { TypewriterEffect } from "@/components/typewriter-effect"
 import { ChatSuggestions } from "@/components/chat-suggestions"
+import { SassGPTLogo } from "@/components/sass-gpt-logo"
 import { debug } from "@/lib/debug"
 
 // Define our models
@@ -39,15 +40,13 @@ const models = [
     id: "intellectual",
     name: "The Intellectual",
     description: "Brutally honest and weirdly specific",
-    enabled: false,
-    badge: "COMING SOON",
+    enabled: true,
   },
   {
     id: "exec",
     name: "The Exec",
     description: "Buzzwords and backhanded compliments",
-    enabled: false,
-    badge: "COMING SOON",
+    enabled: true,
   },
 ]
 
@@ -423,12 +422,8 @@ export default function ChatPage() {
       {/* Header - fixed height */}
       <header className="border-b border-gray-200 py-3 px-4 flex items-center shrink-0">
         <div className="flex items-center">
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
-            alt="ChatGPT Logo"
-            className="w-5 h-5"
-          />
-          <span className="font-semibold ml-2 text-sm">ChatGPT</span>
+          <SassGPTLogo className="w-5 h-5" />
+          <span className="font-semibold ml-2 text-sm">SassGPT</span>
         </div>
 
         <div className="relative ml-3" ref={modelSelectorRef}>
@@ -493,11 +488,7 @@ export default function ChatPage() {
         {showWelcome ? (
           <div className="h-full flex flex-col overflow-auto">
             <div className="flex-1 flex flex-col items-center justify-center p-4">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
-                alt="ChatGPT Logo"
-                className="w-10 h-10 mb-3"
-              />
+              <SassGPTLogo className="w-10 h-10 mb-3" />
               <h1 className="text-2xl font-semibold text-gray-800 mb-6">What do you want?</h1>
 
               <ChatSuggestions onSelectSuggestion={handleSuggestionSelect} />
@@ -528,9 +519,9 @@ export default function ChatPage() {
                   </button>
                 </div>
               </form>
-              <div className="text-[10px] text-center text-gray-500 mt-1.5">
-                ChatGPT can be rude. Don't take it personally.
-              </div>
+                <div className="text-[10px] text-center text-gray-500 mt-1.5">
+                  SassGPT can be rude. Don't take it personally.
+                </div>
             </div>
           </div>
         ) : (
@@ -552,11 +543,7 @@ export default function ChatPage() {
                       <div className="space-y-1.5">
                         <div className="flex items-start">
                           <div className="mr-2 mt-1 flex-shrink-0">
-                            <img
-                              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
-                              alt="ChatGPT Logo"
-                              className="w-5 h-5"
-                            />
+                            <SassGPTLogo className="w-5 h-5" />
                           </div>
                           <div className="inline-block max-w-[calc(100%-2rem)] text-left text-sm">
                             <TypewriterEffect
@@ -650,7 +637,7 @@ export default function ChatPage() {
                   </div>
                 </form>
                 <div className="text-[10px] text-center text-gray-500 mt-1.5">
-                  ChatGPT can be rude. Don't take it personally.
+                  SassGPT can be rude. Don't take it personally.
                 </div>
               </div>
             </div>

@@ -8,7 +8,7 @@ export const maxDuration = 30 // Stream up to 30 seconds
 
 export async function POST(req: Request) {
   try {
-    debug.log("Teenager API route called")
+    debug.log("Exec API route called")
 
     // Check if OpenAI API key is valid
     if (!checkOpenAIApiKey()) {
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     }
 
     // Create system prompt using brand voice
-    let systemPrompt = createSystemPrompt('teenager', isInterruption)
+    let systemPrompt = createSystemPrompt('exec', isInterruption)
 
     // If this is an interruption, modify the last user message
     if (isInterruption) {
@@ -79,14 +79,14 @@ export async function POST(req: Request) {
       }
     }
 
-    debug.log("Starting OpenAI stream with teenager prompt")
+    debug.log("Starting OpenAI stream with exec prompt")
     debug.log("System prompt:", systemPrompt.substring(0, 200) + "...")
 
     const result = streamText({
       model: openai("gpt-4o"),
       messages,
-      temperature: 1.0, // Bring the sass
-      topP: 0.92, // Encourage creative variation
+      temperature: 0.9, // Business-speak variation
+      topP: 0.92,
       maxTokens: 4096,
       system: systemPrompt,
     })
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 
     return result.toDataStreamResponse()
   } catch (error) {
-    debug.error("Error in teenager API route:", error)
+    debug.error("Error in exec API route:", error)
     return new Response(JSON.stringify({ error: "Internal server error", details: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

@@ -40,42 +40,22 @@ const models = [
     name: "The Intellectual",
     description: "Brutally honest and weirdly specific",
     enabled: true,
-    badge: "COMING SOON",
   },
   {
     id: "exec",
     name: "The Exec",
     description: "Buzzwords and backhanded compliments",
-    enabled: false,
-    badge: "COMING SOON",
+    enabled: true,
   },
 ]
 
-// Create a type for storing chat history by model
-type ChatHistoryByModel = {
-  [modelId: string]: {
-    messages: Array<{ role: string; content: string; id: string }>
-    completedMessageIds: string[]
-  }
-}
 
 export default function ChatPage() {
-  // Initialize selectedModel from localStorage or default to first model
-  const [selectedModel, setSelectedModel] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedModelId = localStorage.getItem('selectedModel')
-      const savedModel = models.find(model => model.id === savedModelId && model.enabled)
-      return savedModel || models[0]
-    }
-    return models[0]
-  })
+  // Initialize selectedModel - always start with first model to avoid hydration mismatch
+  const [selectedModel, setSelectedModel] = useState(models[0])
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null)
-  const [isInterrupting, setIsInterrupting] = useState(false)
-  const [interruptionMessage, setInterruptionMessage] = useState("")
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
-  // Store chat history by model
-  const [chatHistoryByModel, setChatHistoryByModel] = useState<ChatHistoryByModel>({})
 
   // Enhanced console logging for debugging
   const logDebug = (info: string, data?: any) => {
@@ -116,53 +96,13 @@ export default function ChatPage() {
     stop,
     setMessages,
   } = useSimpleChat({
-    api: `/api/chat/${selectedModel.id}`,
+    api: `/api/chat`,
+    voice: selectedModel.id,
+    onActiveMessageChange: (messageId) => {
+      setActiveMessageId(messageId)
+    },
     onFinish: (message) => {
-      logDebug(`onFinish called with message id: ${message.id}`)
-
-      // Update the completed messages for the current model
-      setChatHistoryByModel((prev) => {
-        const modelHistory = prev[selectedModel.id] || { messages: [], completedMessageIds: [] }
-        return {
-          ...prev,
-          [selectedModel.id]: {
-            ...modelHistory,
-            completedMessageIds: [...modelHistory.completedMessageIds, message.id],
-          },
-        }
-      })
-
-      // If we have a pending interruption message, send it now
-      if (isInterrupting && interruptionMessage) {
-        const msg = interruptionMessage
-
-        // Clear interruption state
-        setIsInterrupting(false)
-        setInterruptionMessage("")
-        setActiveMessageId(null)
-
-        // Small delay to ensure UI updates
-        setTimeout(() => {
-          logDebug(`Sending delayed interruption message: ${msg}`)
-
-          // Send the interruption message with special flag
-          append(
-            { role: "user", content: msg },
-            {
-              options: {
-                body: {
-                  data: {
-                    isInterruption: true,
-                  },
-                },
-              },
-            },
-          )
-        }, 100)
-      } else {
-        setActiveMessageId(null)
-        setIsInterrupting(false)
-      }
+      setActiveMessageId(null)
     },
     onResponse: (response) => {
       logDebug(`onResponse called with status: ${response.status}`)
@@ -176,35 +116,34 @@ export default function ChatPage() {
     onError: (err) => {
       logDebug(`Error in chat: ${err.message}`)
       console.error("Chat error:", err)
-      setIsInterrupting(false)
-      setInterruptionMessage("")
     },
   })
 
-  // Save messages to history when they change
+  // Load saved model from localStorage after component mounts
   useEffect(() => {
-    if (chatMessages.length > 0) {
-      setChatHistoryByModel((prev) => ({
-        ...prev,
-        [selectedModel.id]: {
-          messages: [...chatMessages],
-          completedMessageIds: prev[selectedModel.id]?.completedMessageIds || [],
-        },
-      }))
+    const savedModelId = localStorage.getItem('selectedModel')
+    if (savedModelId) {
+      const savedModel = models.find(model => model.id === savedModelId && model.enabled)
+      if (savedModel) {
+        setSelectedModel(savedModel)
+      }
     }
-  }, [chatMessages, selectedModel.id])
+  }, [])
 
-  // Get completed message IDs for the current model
-  const completedMessages = chatHistoryByModel[selectedModel.id]?.completedMessageIds || []
 
-  // Log messages for debugging
+
+  // Log messages for debugging (only on significant changes)
   useEffect(() => {
-    logDebug(`Messages updated, count: ${chatMessages.length}`)
-    if (chatMessages.length > 0) {
-      const lastMsg = chatMessages[chatMessages.length - 1]
-      logDebug(`Last message: role=${lastMsg.role}, id=${lastMsg.id}, content=${lastMsg.content.substring(0, 50)}...`)
+    // Only log when message count changes, not on every content update
+    if (chatMessages.length !== prevMessagesLength.current) {
+      logDebug(`Messages updated, count: ${chatMessages.length}`)
+      if (chatMessages.length > 0) {
+        const lastMsg = chatMessages[chatMessages.length - 1]
+        logDebug(`Last message: role=${lastMsg.role}, id=${lastMsg.id}, content=${lastMsg.content.substring(0, 50)}...`)
+      }
+      prevMessagesLength.current = chatMessages.length
     }
-  }, [chatMessages])
+  }, [chatMessages.length]) // Only depend on length, not full array
 
   // Log loading state changes
   useEffect(() => {
@@ -237,47 +176,10 @@ export default function ChatPage() {
     })
   }
 
-  // Handle form submission with interruption logic
+  // Handle form submission - simplified
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    logDebug(`Form submitted with input: ${input}`)
-
-    // If there's an active message being typed, interrupt it
-    if (activeMessageId && isLoading) {
-      logDebug(`Interrupting active message: ${activeMessageId}`)
-
-      // Store the current input before clearing it
-      const currentInput = input
-
-      // Clear the input immediately to provide feedback
-      setInput("")
-
-      // Set interruption state
-      setIsInterrupting(true)
-      setInterruptionMessage(currentInput)
-
-      // Force the current message to be marked as completed
-      setChatHistoryByModel((prev) => {
-        const modelHistory = prev[selectedModel.id] || { messages: [], completedMessageIds: [] }
-        if (!modelHistory.completedMessageIds.includes(activeMessageId)) {
-          return {
-            ...prev,
-            [selectedModel.id]: {
-              ...modelHistory,
-              completedMessageIds: [...modelHistory.completedMessageIds, activeMessageId],
-            },
-          }
-        }
-        return prev
-      })
-
-      // Stop the current message generation
-      stop()
-
-      // The actual message will be sent in the onFinish callback
-    } else {
-      // Normal submission
-      logDebug(`Normal submission, isLoading: ${isLoading}`)
+    if (!isLoading) {
       handleSubmit(e)
     }
   }
@@ -389,45 +291,16 @@ export default function ChatPage() {
   // Add this function to handle model switching
   const handleModelChange = (model: (typeof models)[0]) => {
     if (model.enabled) {
-      logDebug(`Switching model to: ${model.id}`)
-
-      // Save current messages to history
-      if (chatMessages.length > 0) {
-        setChatHistoryByModel((prev) => ({
-          ...prev,
-          [selectedModel.id]: {
-            messages: [...chatMessages],
-            completedMessageIds: completedMessages,
-          },
-        }))
-      }
-
-      // Set the selected model
       setSelectedModel(model)
+      setMessages([]) // Clear messages when switching models
+      setShowWelcome(true)
+      setShowModelSelector(false)
       
       // Save to localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('selectedModel', model.id)
       }
-
-      // Load messages for the selected model
-      const modelHistory = chatHistoryByModel[model.id]
-      if (modelHistory && modelHistory.messages.length > 0) {
-        // Map stored history into Message[] shape
-        const mappedMessages = modelHistory.messages.map((m) => ({
-          role: m.role as "user" | "assistant" | "system",
-          content: m.content,
-          id: m.id,
-        }))
-        setMessages(mappedMessages)
-        setShowWelcome(false)
-      } else if (chatMessages.length > 0) {
-        // If switching to a new model but we have messages, clear them
-        setMessages([])
-        setShowWelcome(true)
-      }
-
-      setShowModelSelector(false)
+      
       // Focus back on input after selecting model
       setTimeout(() => inputRef.current?.focus(), 100)
     }
@@ -443,14 +316,21 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen bg-white w-full overflow-hidden">
       {/* Header - fixed height */}
       <header className="border-b border-gray-200 py-3 px-4 flex items-center shrink-0">
-        <div className="flex items-center">
+        <button 
+          onClick={() => {
+            stop() // Stop any ongoing stream
+            setMessages([]) // Clear chat history
+            setShowWelcome(true) // Show welcome screen
+          }}
+          className="flex items-center hover:bg-gray-100 rounded-md px-2 py-1 transition-colors"
+        >
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
             alt="ChatGPT Logo"
             className="w-5 h-5"
           />
           <span className="font-semibold ml-2 text-sm">ChatGPT</span>
-        </div>
+        </button>
 
         <div className="relative ml-3" ref={modelSelectorRef}>
           <button
@@ -582,11 +462,9 @@ export default function ChatPage() {
                           <div className="inline-block max-w-[calc(100%-2rem)] text-left text-sm">
                             <TypewriterEffect
                               content={message.content}
-                              isComplete={completedMessages.includes(message.id)}
-                              character={selectedModel.id as "teenager" | "grandma"}
+                              character={selectedModel.id as "teenager" | "grandma" | "intellectual" | "exec"}
                               messageId={message.id}
-                              shouldRender={activeMessageId === message.id || completedMessages.includes(message.id)}
-                              key={`${message.id}-${message.content.length}`}
+                              key={message.id}
                             />
 
                             {/* Show loading indicator if message is active but empty */}
@@ -658,13 +536,16 @@ export default function ChatPage() {
                     onBlur={() => setIsInputFocused(false)}
                     placeholder="Go on then..."
                     className="flex-1 py-2 px-1 bg-transparent outline-none text-[16px]"
-                    disabled={isInterrupting}
                   />
                   <div className="flex items-center px-2">
                     <button
                       type="submit"
-                      className="p-1 text-gray-500 hover:bg-gray-100 rounded-full"
-                      disabled={isInterrupting}
+                      className={`p-1 rounded-full ${
+                        isLoading 
+                          ? "text-gray-300 cursor-not-allowed" 
+                          : "text-gray-500 hover:bg-gray-100"
+                      }`}
+                      disabled={isLoading}
                     >
                       <Send size={16} />
                     </button>

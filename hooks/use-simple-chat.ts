@@ -8,9 +8,11 @@ export interface Message {
 
 export interface UseSimpleChatOptions {
   api: string
+  voice?: string
   onFinish?: (message: Message) => void
   onResponse?: (response: Response) => void
   onError?: (error: Error) => void
+  onActiveMessageChange?: (messageId: string | null) => void
 }
 
 export interface UseSimpleChatReturn {
@@ -47,6 +49,9 @@ export function useSimpleChat(options: UseSimpleChatOptions): UseSimpleChatRetur
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
+    let accumulatedContent = ""
+    let lastUpdateTime = 0
+    const UPDATE_INTERVAL = 50 // Update every 50ms for smooth streaming
 
     try {
       while (true) {
@@ -55,25 +60,36 @@ export function useSimpleChat(options: UseSimpleChatOptions): UseSimpleChatRetur
         if (done) break
 
         const chunk = decoder.decode(value, { stream: true })
+        accumulatedContent += chunk
         
-        // Update the assistant message content progressively
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, content: msg.content + chunk }
-              : msg
+        // Smart batching: only update UI at regular intervals
+        const now = Date.now()
+        if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessage.id 
+                ? { ...msg, content: accumulatedContent }
+                : msg
+            )
           )
-        )
+          lastUpdateTime = now
+        }
       }
 
+      // Final update to ensure all content is displayed
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === assistantMessage.id 
+            ? { ...msg, content: accumulatedContent }
+            : msg
+        )
+      )
+
       // Call onFinish when streaming is complete
-      setMessages(prev => {
-        const finalMessage = prev.find(msg => msg.id === assistantMessage.id)
-        if (finalMessage && options.onFinish) {
-          options.onFinish(finalMessage)
-        }
-        return prev
-      })
+      const finalMessage = { ...assistantMessage, content: accumulatedContent }
+      if (options.onFinish) {
+        options.onFinish(finalMessage)
+      }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
         throw err
@@ -105,9 +121,15 @@ export function useSimpleChat(options: UseSimpleChatOptions): UseSimpleChatRetur
       // Add assistant message to state
       setMessages(prev => [...prev, assistantMessage])
 
+      // Notify parent component about active message
+      if (options.onActiveMessageChange) {
+        options.onActiveMessageChange(assistantMessage.id)
+      }
+
       // Prepare request body
       const requestBody = {
         messages: updatedMessages,
+        voice: options.voice,
         ...requestOptions,
       }
 
@@ -153,6 +175,11 @@ export function useSimpleChat(options: UseSimpleChatOptions): UseSimpleChatRetur
     } finally {
       setIsLoading(false)
       abortControllerRef.current = null
+      
+      // Clear active message when done
+      if (options.onActiveMessageChange) {
+        options.onActiveMessageChange(null)
+      }
     }
   }
 

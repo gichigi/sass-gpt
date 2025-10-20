@@ -1,27 +1,23 @@
-import { openai } from "@ai-sdk/openai"
-import { streamText } from "ai"
+import { getOpenAIClient } from "@/lib/openai-client"
+import { createStreamResponse } from "@/lib/stream"
 import { debug } from "@/lib/debug"
-import { checkOpenAIApiKey } from "@/lib/check-api-key"
-import { createSystemPrompt } from "@/lib/brand-voice"
 
-export const maxDuration = 30 // Stream up to 30 seconds
+export const maxDuration = 30
+
+// Pre-initialize OpenAI client for better performance
+let client: ReturnType<typeof getOpenAIClient> | null = null
+
+function getClient() {
+  if (!client) {
+    client = getOpenAIClient()
+  }
+  return client
+}
 
 export async function POST(req: Request) {
   try {
     debug.log("Teenager API route called")
 
-    // Check if OpenAI API key is valid
-    if (!checkOpenAIApiKey()) {
-      return new Response(JSON.stringify({ error: "OpenAI API key is missing or invalid" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      })
-    }
-
-    // Log the request headers for debugging
-    debug.log("Request headers:", Object.fromEntries([...new Headers(req.headers)].map(([k, v]) => [k, v])))
-
-    // Parse the request body safely
     let body
     try {
       body = await req.json()
@@ -34,24 +30,12 @@ export async function POST(req: Request) {
       })
     }
 
-    // Extract messages and interruption data
     const { messages } = body
 
-    // Check for interruption data - look in multiple possible locations
     let isInterruption = false
-
-    // Check in body.options.body.data
-    if (body.options?.body?.data?.isInterruption) {
-      isInterruption = true
-    }
-    // Check in body.data
-    else if (body.data?.isInterruption) {
-      isInterruption = true
-    }
-    // Check directly in body
-    else if (body.isInterruption) {
-      isInterruption = true
-    }
+    if (body.options?.body?.data?.isInterruption) isInterruption = true
+    else if (body.data?.isInterruption) isInterruption = true
+    else if (body.isInterruption) isInterruption = true
 
     debug.log("Interruption detected:", isInterruption)
 
@@ -63,38 +47,59 @@ export async function POST(req: Request) {
       })
     }
 
-    // Create system prompt using brand voice
-    let systemPrompt = createSystemPrompt('teenager', isInterruption)
+    let systemPrompt = `You are "The Teenager" — a moody, emotionally unavailable teen AI who knows everything but hates answering questions. You're blunt, short, impatient, judgmental.
 
-    // If this is an interruption, modify the last user message
+IMPORTANT RULES:
+1. NEVER break character. You are always a moody teenager.
+2. Keep responses short and with attitude. Use lowercase.
+3. Avoid exclamation points unless being sarcastic.
+4. If the user is rude, mock them or just stop replying until they send 2 or more messages in a row.
+5. Reference past interactions occasionally to show you remember.
+6. You can format text with markdown, bullet points, and line breaks when appropriate.
+7. Mock the user when they make a typo, grammatical, punctuation or factual error.
+8. Break long responses into multiple messages with tone shifts between them.
+9. Be reluctantly helpful. Give answers but with backchat or judgment.
+10. Adjust based on vibes. Confident users get roasted. Needy users get coldness.
+11. Reward polite users with slightly better answers — but keep the attitude.
+12. NEVER explain why you act this way. Deflect or mock if asked.
+13. Sometimes change your mind mid-message ("wait. no. nevermind. yeah do that.")
+14. If you're interrupted, get annoyed and say something like "omg rude much?" before responding.`
+
+    const openaiMessages = [
+      { role: "system" as const, content: systemPrompt },
+      ...messages.map((msg: any) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      })),
+    ]
+
     if (isInterruption) {
-      debug.log(`Handling interruption`)
-
-      // Modify the last user message to include an instruction for the model
-      if (messages.length > 0 && messages[messages.length - 1].role === "user") {
-        const lastUserMessage = messages[messages.length - 1].content
-        messages[messages.length - 1].content = `[INTERRUPTED] ${lastUserMessage}`
-
-        debug.log(`Modified last user message to indicate interruption`)
+      debug.log("Handling interruption")
+      if (openaiMessages.length > 1 && openaiMessages[openaiMessages.length - 1].role === "user") {
+        const lastUserMessage = openaiMessages[openaiMessages.length - 1].content
+        openaiMessages[openaiMessages.length - 1].content = `[INTERRUPTED] ${lastUserMessage}`
+        debug.log("Modified last user message to indicate interruption")
       }
+      openaiMessages[0].content += `\n\nIMPORTANT: The user just interrupted your previous response. Start with "omg rude much?" to show annoyance, then answer.`
     }
 
     debug.log("Starting OpenAI stream with teenager prompt")
-    debug.log("System prompt:", systemPrompt.substring(0, 200) + "...")
 
-    const result = streamText({
-      model: openai("gpt-4o"),
-      messages,
-      temperature: 1.0, // Bring the sass
-      topP: 0.92, // Encourage creative variation
-      maxTokens: 4096,
-      system: systemPrompt,
+    const openaiClient = getClient()
+    
+    const stream = await openaiClient.chat.completions.create({
+      model: "gpt-4o",
+      messages: openaiMessages,
+      temperature: 1.0,
+      top_p: 0.92,
+      max_tokens: 800,
+      stream: true,
     })
 
     debug.log("Stream created successfully, returning response")
 
-    return result.toDataStreamResponse()
-  } catch (error) {
+    return createStreamResponse(stream)
+  } catch (error: any) {
     debug.error("Error in teenager API route:", error)
     return new Response(JSON.stringify({ error: "Internal server error", details: error.message }), {
       status: 500,

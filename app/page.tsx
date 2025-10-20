@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useChat } from "@ai-sdk/react"
+import { useSimpleChat } from "@/hooks/use-simple-chat"
 import { useState, useRef, useEffect } from "react"
 import {
   ThumbsUp,
@@ -18,7 +18,6 @@ import {
 } from "lucide-react"
 import { TypewriterEffect } from "@/components/typewriter-effect"
 import { ChatSuggestions } from "@/components/chat-suggestions"
-import { SassGPTLogo } from "@/components/sass-gpt-logo"
 import { debug } from "@/lib/debug"
 
 // Define our models
@@ -41,12 +40,14 @@ const models = [
     name: "The Intellectual",
     description: "Brutally honest and weirdly specific",
     enabled: true,
+    badge: "COMING SOON",
   },
   {
     id: "exec",
     name: "The Exec",
     description: "Buzzwords and backhanded compliments",
-    enabled: true,
+    enabled: false,
+    badge: "COMING SOON",
   },
 ]
 
@@ -59,7 +60,15 @@ type ChatHistoryByModel = {
 }
 
 export default function ChatPage() {
-  const [selectedModel, setSelectedModel] = useState(models[0])
+  // Initialize selectedModel from localStorage or default to first model
+  const [selectedModel, setSelectedModel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedModelId = localStorage.getItem('selectedModel')
+      const savedModel = models.find(model => model.id === savedModelId && model.enabled)
+      return savedModel || models[0]
+    }
+    return models[0]
+  })
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null)
   const [isInterrupting, setIsInterrupting] = useState(false)
   const [interruptionMessage, setInterruptionMessage] = useState("")
@@ -106,7 +115,7 @@ export default function ChatPage() {
     reload,
     stop,
     setMessages,
-  } = useChat({
+  } = useSimpleChat({
     api: `/api/chat/${selectedModel.id}`,
     onFinish: (message) => {
       logDebug(`onFinish called with message id: ${message.id}`)
@@ -142,7 +151,9 @@ export default function ChatPage() {
             {
               options: {
                 body: {
-                  isInterruption: true,
+                  data: {
+                    isInterruption: true,
+                  },
                 },
               },
             },
@@ -393,11 +404,22 @@ export default function ChatPage() {
 
       // Set the selected model
       setSelectedModel(model)
+      
+      // Save to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('selectedModel', model.id)
+      }
 
       // Load messages for the selected model
       const modelHistory = chatHistoryByModel[model.id]
       if (modelHistory && modelHistory.messages.length > 0) {
-        setMessages(modelHistory.messages)
+        // Map stored history into Message[] shape
+        const mappedMessages = modelHistory.messages.map((m) => ({
+          role: m.role as "user" | "assistant" | "system",
+          content: m.content,
+          id: m.id,
+        }))
+        setMessages(mappedMessages)
         setShowWelcome(false)
       } else if (chatMessages.length > 0) {
         // If switching to a new model but we have messages, clear them
@@ -422,8 +444,12 @@ export default function ChatPage() {
       {/* Header - fixed height */}
       <header className="border-b border-gray-200 py-3 px-4 flex items-center shrink-0">
         <div className="flex items-center">
-          <SassGPTLogo className="w-5 h-5" />
-          <span className="font-semibold ml-2 text-sm">SassGPT</span>
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
+            alt="ChatGPT Logo"
+            className="w-5 h-5"
+          />
+          <span className="font-semibold ml-2 text-sm">ChatGPT</span>
         </div>
 
         <div className="relative ml-3" ref={modelSelectorRef}>
@@ -488,7 +514,11 @@ export default function ChatPage() {
         {showWelcome ? (
           <div className="h-full flex flex-col overflow-auto">
             <div className="flex-1 flex flex-col items-center justify-center p-4">
-              <SassGPTLogo className="w-10 h-10 mb-3" />
+              <img
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
+                alt="ChatGPT Logo"
+                className="w-10 h-10 mb-3"
+              />
               <h1 className="text-2xl font-semibold text-gray-800 mb-6">What do you want?</h1>
 
               <ChatSuggestions onSelectSuggestion={handleSuggestionSelect} />
@@ -519,9 +549,9 @@ export default function ChatPage() {
                   </button>
                 </div>
               </form>
-                <div className="text-[10px] text-center text-gray-500 mt-1.5">
-                  SassGPT can be rude. Don't take it personally.
-                </div>
+              <div className="text-[10px] text-center text-gray-500 mt-1.5">
+                ChatGPT can be rude. Don't take it personally.
+              </div>
             </div>
           </div>
         ) : (
@@ -543,7 +573,11 @@ export default function ChatPage() {
                       <div className="space-y-1.5">
                         <div className="flex items-start">
                           <div className="mr-2 mt-1 flex-shrink-0">
-                            <SassGPTLogo className="w-5 h-5" />
+                            <img
+                              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
+                              alt="ChatGPT Logo"
+                              className="w-5 h-5"
+                            />
                           </div>
                           <div className="inline-block max-w-[calc(100%-2rem)] text-left text-sm">
                             <TypewriterEffect
@@ -637,7 +671,7 @@ export default function ChatPage() {
                   </div>
                 </form>
                 <div className="text-[10px] text-center text-gray-500 mt-1.5">
-                  SassGPT can be rude. Don't take it personally.
+                  ChatGPT can be rude. Don't take it personally.
                 </div>
               </div>
             </div>

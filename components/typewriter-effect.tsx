@@ -7,7 +7,7 @@ import { debug } from "@/lib/debug"
 interface TypewriterEffectProps {
   content: string
   isComplete: boolean
-  character?: "teenager" | "grandma"
+  character?: "teenager" | "grandma" | "intellectual"
   messageId: string
   shouldRender: boolean // Add this to control whether to render the message
 }
@@ -150,12 +150,24 @@ export function TypewriterEffect({
   }, [content, displayedContent, isComplete, character, shouldRender, messageId])
 
   // Function to determine typing delay based on context and character
-  const getTypingDelay = (currentText: string, nextChar: string, character: "teenager" | "grandma"): number => {
+  const getTypingDelay = (
+    currentText: string,
+    nextChar: string,
+    character: "teenager" | "grandma" | "intellectual",
+  ): number => {
     // Base delay - keep the slow typing as requested
-    const baseDelay = character === "grandma" ? 30 : 15
+    const baseDelay = character === "grandma" ? 30 : character === "intellectual" ? 27 : 15
 
     // For grandma, add random pauses to simulate hunting for keys
     const randomFactor = character === "grandma" ? (Math.random() < 0.1 ? 10 : 1) : 1
+
+    // For intellectual, add dramatic pauses for full stops only
+    if (character === "intellectual") {
+      // Dramatic pause after full stops only
+      if (currentText[currentText.length - 1] === ".") {
+        return baseDelay * 30 // 50% longer dramatic pause for superior contemplation
+      }
+    }
 
     // Longer pause after sentence-ending punctuation
     if ([".", "!", "?"].includes(currentText[currentText.length - 1])) {

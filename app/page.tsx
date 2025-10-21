@@ -16,6 +16,7 @@ import {
   Check,
   ChevronLeft,
 } from "lucide-react"
+import * as Toggle from '@radix-ui/react-toggle'
 import { TypewriterEffect } from "@/components/typewriter-effect"
 import { ChatSuggestions } from "@/components/chat-suggestions"
 import { debug } from "@/lib/debug"
@@ -55,7 +56,6 @@ export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState(models[0])
   const [isHydrated, setIsHydrated] = useState(false)
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null)
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   const [isTyping, setIsTyping] = useState(false)
   const selectedModelRef = useRef(selectedModel)
 
@@ -74,16 +74,60 @@ export default function ChatPage() {
   const copyToClipboard = async (content: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(content)
-      setCopiedMessageId(messageId)
+      
+      // Update feedback state to show copied
+      setMessageFeedback(prev => ({
+        ...prev,
+        [messageId]: {
+          ...prev[messageId],
+          copied: true
+        }
+      }))
+      
       logDebug(`Copied message ${messageId} to clipboard`)
 
       // Reset the copied state after 2 seconds
       setTimeout(() => {
-        setCopiedMessageId(null)
+        setMessageFeedback(prev => ({
+          ...prev,
+          [messageId]: {
+            ...prev[messageId],
+            copied: false
+          }
+        }))
       }, 2000)
     } catch (err) {
       logDebug(`Failed to copy message ${messageId} to clipboard: ${err}`)
     }
+  }
+
+  // Handle thumbs up feedback
+  const handleThumbsUp = (messageId: string, pressed: boolean) => {
+    setMessageFeedback(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        thumbsUp: pressed ? true : null
+      }
+    }))
+    logDebug(`Thumbs up ${pressed ? 'pressed' : 'released'} for message ${messageId}`)
+  }
+
+  // Handle thumbs down feedback
+  const handleThumbsDown = (messageId: string, pressed: boolean) => {
+    setMessageFeedback(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        thumbsUp: pressed ? false : null
+      }
+    }))
+    logDebug(`Thumbs down ${pressed ? 'pressed' : 'released'} for message ${messageId}`)
+  }
+
+  // Get feedback state for a message
+  const getFeedbackState = (messageId: string) => {
+    return messageFeedback[messageId] || { thumbsUp: null, copied: false }
   }
 
   const {
@@ -181,26 +225,15 @@ export default function ChatPage() {
   const prevMessagesLength = useRef(chatMessages.length)
   const [isInputFocused, setIsInputFocused] = useState(false)
   
-  // Smart auto-scroll state
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
-  const scrollThreshold = 100 // pixels from bottom
-  
-  // Add a simple auto-scroll during typing
-  useEffect(() => {
-    if (isTyping && shouldAutoScroll) {
-      const interval = setInterval(() => {
-        scrollToBottom("auto")
-      }, 100) // Scroll every 100ms during typing
-      
-      return () => clearInterval(interval)
-    }
-  }, [isTyping, shouldAutoScroll])
+  // Message feedback state
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, {
+    thumbsUp: boolean | null // true = liked, false = disliked, null = no feedback
+    copied: boolean
+  }>>({})
 
   // Handle suggestion selection - directly append message
   const handleSuggestionSelect = (suggestion: string) => {
     logDebug(`Suggestion selected: ${suggestion}`)
-    // Force scroll to bottom when user selects a suggestion
-    setShouldAutoScroll(true)
     // Directly append the user message
     append({
       role: "user",
@@ -212,8 +245,6 @@ export default function ChatPage() {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!isLoading && !isTyping) {
-      // Force scroll to bottom when user sends a message
-      setShouldAutoScroll(true)
       handleSubmit(e)
     }
   }
@@ -231,16 +262,6 @@ export default function ChatPage() {
     }
   }, [])
 
-  // Check if user is near the bottom of the chat
-  const checkIfNearBottom = useCallback(() => {
-    if (!chatContainerRef.current) return true // Default to true if container not ready
-    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-    const isNearBottom = distanceFromBottom < scrollThreshold
-    logDebug(`Distance from bottom: ${distanceFromBottom}, threshold: ${scrollThreshold}, nearBottom: ${isNearBottom}`)
-    return isNearBottom
-  }, [scrollThreshold])
-
   // Improved scroll handling
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (messagesEndRef.current) {
@@ -248,42 +269,15 @@ export default function ChatPage() {
     }
   }
 
-  // Handle scroll events to track user position
-  const handleScroll = useCallback(() => {
-    const isNearBottom = checkIfNearBottom()
-    setShouldAutoScroll(isNearBottom)
-    
-    // Debug scroll info
-    if (chatContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
-      logDebug(`Scroll: top=${scrollTop}, height=${scrollHeight}, client=${clientHeight}, nearBottom=${isNearBottom}`)
-    }
-  }, [checkIfNearBottom])
-
-  // Add scroll event listener
+  // Simple auto-scroll during typing
   useEffect(() => {
-    const chatContainer = chatContainerRef.current
-    if (chatContainer) {
-      chatContainer.addEventListener('scroll', handleScroll, { passive: true })
-      return () => chatContainer.removeEventListener('scroll', handleScroll)
+    if (isTyping) {
+      const interval = setInterval(() => {
+        scrollToBottom("auto")
+      }, 100)
+      return () => clearInterval(interval)
     }
-  }, [handleScroll])
-
-  // Debug container dimensions when messages change and force scroll for new messages
-  useEffect(() => {
-    if (chatContainerRef.current && chatMessages.length > 0) {
-      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
-      logDebug(`Container dimensions: scrollHeight=${scrollHeight}, clientHeight=${clientHeight}, scrollable=${scrollHeight > clientHeight}`)
-      
-      // Force scroll to bottom when new messages are added
-      if (chatMessages.length > prevMessagesLength.current) {
-        logDebug(`New message added, forcing scroll to bottom`)
-        setTimeout(() => {
-          scrollToBottom("smooth")
-        }, 100)
-      }
-    }
-  }, [chatMessages.length])
+  }, [isTyping])
 
   // Scroll to bottom when messages change or when typing
   useEffect(() => {
@@ -297,23 +291,19 @@ export default function ChatPage() {
       }, 150)
     }
 
-    // Always auto-scroll on new messages, but respect user scroll position
-    if (chatMessages.length > 0) {
-      // Use a small timeout to ensure DOM updates are complete
-      const timer = setTimeout(() => {
-        if (shouldAutoScroll) {
-          scrollToBottom()
-        }
-      }, 50) // Slightly longer timeout for better reliability
-      return () => clearTimeout(timer)
-    }
+    // Use a small timeout to ensure DOM updates are complete
+    const timer = setTimeout(() => {
+      scrollToBottom()
+    }, 50)
 
     // Focus input after new message is received
     if (chatMessages.length > prevMessagesLength.current) {
       inputRef.current?.focus()
     }
     prevMessagesLength.current = chatMessages.length
-  }, [chatMessages, showWelcome, isInputFocused, shouldAutoScroll])
+
+    return () => clearTimeout(timer)
+  }, [chatMessages, showWelcome, isInputFocused])
 
   // Focus input on initial load
   useEffect(() => {
@@ -342,33 +332,31 @@ export default function ChatPage() {
   useEffect(() => {
     const handleResize = () => {
       // When the virtual keyboard appears on mobile, we want to scroll to the bottom
-      // but only if user is near bottom or it's a new message
-      if (isInputFocused && shouldAutoScroll) {
+      if (isInputFocused) {
         scrollToBottom("auto")
       }
     }
 
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
-  }, [isInputFocused, shouldAutoScroll])
+  }, [isInputFocused])
 
   // Handle visibility changes (e.g., when user switches tabs/apps and comes back)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && !showWelcome && shouldAutoScroll) {
+      if (document.visibilityState === "visible" && !showWelcome) {
         scrollToBottom("auto")
       }
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [showWelcome, shouldAutoScroll])
+  }, [showWelcome])
 
   // Prevent zoom on input focus
   useEffect(() => {
     // This helps prevent the zoom issue on iOS Safari
     const preventZoom = (e: TouchEvent) => {
-      // Only prevent zoom gestures (pinch), not regular scrolling
       if (e.touches.length > 1) {
         e.preventDefault()
       }
@@ -388,7 +376,6 @@ export default function ChatPage() {
       setIsTransitioning(true)
       setShowWelcome(true)
       setShowModelSelector(false)
-      setShouldAutoScroll(true) // Reset auto-scroll for new conversation
       
       // Save to localStorage
       if (typeof window !== 'undefined') {
@@ -417,7 +404,7 @@ export default function ChatPage() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-screen bg-white w-full">
+    <div className="flex flex-col h-screen bg-white w-full">
       {/* Header - fixed height */}
       <header className="border-b border-gray-200 py-3 px-4 flex items-center shrink-0">
         <button 
@@ -427,7 +414,6 @@ export default function ChatPage() {
             setIsTransitioning(true)
             setShowWelcome(true) // Show welcome screen
             setIsTyping(false) // Reset typing state
-            setShouldAutoScroll(true) // Reset auto-scroll for new conversation
             setTimeout(() => setIsTransitioning(false), 150)
           }}
           className="flex items-center hover:bg-gray-100 rounded-md px-2 py-1 transition-colors"
@@ -497,57 +483,24 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* Main content area - flexible height */}
-      <div className="flex-1 flex flex-col">
+      {/* Chat area - scrollable middle section */}
+      <div className="flex-1 overflow-y-auto">
         {showWelcome ? (
-          <div className={`h-full flex flex-col overflow-auto transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-            <div className="flex-1 flex flex-col items-center justify-center p-4">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
-                alt="ChatGPT Logo"
-                className="w-10 h-10 mb-3"
-              />
-              <h1 className="text-2xl font-semibold text-gray-800 mb-6">What do you want?</h1>
-
-              <ChatSuggestions onSelectSuggestion={handleSuggestionSelect} />
-            </div>
-
-            <div className="p-3 w-full max-w-2xl mx-auto mt-auto">
-              <form
-                onSubmit={handleFormSubmit}
-                className="relative flex items-center bg-white border border-gray-300 rounded-[20px] shadow-sm"
-              >
-                <button type="button" className="p-2 text-gray-500">
-                  <Plus size={16} />
-                </button>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={handleInputChange}
-                  onFocus={() => setIsInputFocused(true)}
-                  onBlur={() => setIsInputFocused(false)}
-                  placeholder="Go on then..."
-                  className="flex-1 py-2 px-1 bg-transparent outline-none text-[16px]"
-                  autoFocus
-                />
-                <div className="flex items-center px-2">
-                  <button type="submit" className="p-1 text-gray-500 hover:bg-gray-100 rounded-full">
-                    <Send size={16} />
-                  </button>
-                </div>
-              </form>
-              <div className="text-[10px] text-center text-gray-500 mt-1.5">
-                ChatGPT can be rude. Don't take it personally.
-              </div>
-            </div>
+          <div className={`h-full flex flex-col items-center justify-center p-4 transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
+              alt="ChatGPT Logo"
+              className="w-10 h-10 mb-3"
+            />
+            <h1 className="text-2xl font-semibold text-gray-800 mb-6">What do you want?</h1>
+            <ChatSuggestions onSelectSuggestion={handleSuggestionSelect} />
           </div>
         ) : (
           <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             {/* Chat messages - scrollable */}
             <div
               ref={chatContainerRef}
-              className="flex-1 overflow-y-auto p-3 pb-0 w-full"
+              className="p-3 pb-0 w-full"
               style={{ overscrollBehavior: "auto" }}
             >
               <div className="max-w-2xl mx-auto">
@@ -589,23 +542,43 @@ export default function ChatPage() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-1.5 text-gray-500 ml-7">
+                          {/* Copy Button */}
                           <button
-                            className="p-1 hover:bg-gray-100 rounded-full"
+                            className={`p-1 rounded-full transition-all duration-200 ${
+                              getFeedbackState(message.id).copied 
+                                ? 'bg-gray-600 text-white' 
+                                : 'hover:bg-gray-100'
+                            }`}
                             onClick={() => copyToClipboard(message.content, message.id)}
                             aria-label="Copy to clipboard"
                           >
-                            {copiedMessageId === message.id ? (
-                              <Check size={14} className="text-green-500" />
+                            {getFeedbackState(message.id).copied ? (
+                              <Check size={14} />
                             ) : (
                               <Copy size={14} />
                             )}
                           </button>
-                          <button className="p-1 hover:bg-gray-100 rounded-full">
+                          
+                          {/* Thumbs Up Toggle */}
+                          <Toggle.Root
+                            pressed={getFeedbackState(message.id).thumbsUp === true}
+                            onPressedChange={(pressed) => handleThumbsUp(message.id, pressed)}
+                            className="p-1 rounded-full hover:bg-gray-100 data-[state=on]:bg-gray-600 data-[state=on]:text-white data-[state=on]:border data-[state=on]:border-gray-500 transition-all duration-200"
+                            aria-label="Thumbs up"
+                          >
                             <ThumbsUp size={14} />
-                          </button>
-                          <button className="p-1 hover:bg-gray-100 rounded-full">
+                          </Toggle.Root>
+                          
+                          {/* Thumbs Down Toggle */}
+                          <Toggle.Root
+                            pressed={getFeedbackState(message.id).thumbsUp === false}
+                            onPressedChange={(pressed) => handleThumbsDown(message.id, pressed)}
+                            className="p-1 rounded-full hover:bg-gray-100 data-[state=on]:bg-gray-600 data-[state=on]:text-white data-[state=on]:border data-[state=on]:border-gray-500 transition-all duration-200"
+                            aria-label="Thumbs down"
+                          >
                             <ThumbsDown size={14} />
-                          </button>
+                          </Toggle.Root>
+                          
                           <button className="p-1 hover:bg-gray-100 rounded-full">
                             <Share2 size={14} />
                           </button>
@@ -622,47 +595,48 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Input area - fixed at bottom */}
-            <div className="p-3 border-t border-gray-200 shrink-0 w-full">
-              <div className="max-w-2xl mx-auto">
-                <form
-                  onSubmit={handleFormSubmit}
-                  className="relative flex items-center bg-white border border-gray-300 rounded-[20px] shadow-sm"
-                >
-                  <button type="button" className="p-2 text-gray-500">
-                    <Plus size={16} />
-                  </button>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={handleInputChange}
-                    onFocus={() => setIsInputFocused(true)}
-                    onBlur={() => setIsInputFocused(false)}
-                    placeholder="Go on then..."
-                    className="flex-1 py-2 px-1 bg-transparent outline-none text-[16px]"
-                  />
-                  <div className="flex items-center px-2">
-                    <button
-                      type="submit"
-                      className={`p-1 rounded-full ${
-                        (isLoading || isTyping)
-                          ? "text-gray-300 cursor-not-allowed" 
-                          : "text-gray-500 hover:bg-gray-100"
-                      }`}
-                      disabled={isLoading || isTyping}
-                    >
-                      <Send size={16} />
-                    </button>
-                  </div>
-                </form>
-                <div className="text-[10px] text-center text-gray-500 mt-1.5">
-                  ChatGPT can be rude. Don't take it personally.
-                </div>
-              </div>
-            </div>
           </div>
         )}
+      </div>
+
+      {/* Input area - always visible at bottom */}
+      <div className="shrink-0 border-t border-gray-200 bg-white">
+        <div className="p-3 w-full max-w-2xl mx-auto">
+          <form
+            onSubmit={handleFormSubmit}
+            className="relative flex items-center bg-white border border-gray-300 rounded-[20px] shadow-sm"
+          >
+            <button type="button" className="p-2 text-gray-500">
+              <Plus size={16} />
+            </button>
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={handleInputChange}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
+              placeholder="Go on then..."
+              className="flex-1 py-2 px-1 bg-transparent outline-none text-[16px]"
+            />
+            <div className="flex items-center px-2">
+              <button
+                type="submit"
+                className={`p-1 rounded-full ${
+                  (isLoading || isTyping)
+                    ? "text-gray-300 cursor-not-allowed" 
+                    : "text-gray-500 hover:bg-gray-100"
+                }`}
+                disabled={isLoading || isTyping}
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </form>
+          <div className="text-[10px] text-center text-gray-500 mt-1.5">
+            ChatGPT can be rude. Don't take it personally.
+          </div>
+        </div>
       </div>
     </div>
   )

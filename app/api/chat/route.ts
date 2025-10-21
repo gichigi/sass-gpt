@@ -1,6 +1,5 @@
 import { getOpenAIClient } from "@/lib/openai-client"
 import { createStreamResponse } from "@/lib/stream"
-import { debug } from "@/lib/debug"
 
 export const maxDuration = 60 // Stream up to 60 seconds (grandma types slowly)
 
@@ -58,26 +57,18 @@ Your tone is smooth, positive, and full of empty business confidence.`,
 
 export async function POST(req: Request) {
   try {
-    debug.log("Chat API route called")
 
     const body = await req.json()
     const { messages, isInterruption, voice = "teenager" } = body
 
-    debug.log("Request body:", { 
-      messageCount: messages?.length, 
-      isInterruption,
-      voice
-    })
 
     if (!messages || !Array.isArray(messages)) {
-      debug.log("Invalid messages format")
       return new Response("Invalid messages format", { status: 400 })
     }
 
     // Get voice configuration
     const config = voiceConfigs[voice as keyof typeof voiceConfigs]
     if (!config) {
-      debug.log("Invalid voice:", voice)
       return new Response("Invalid voice", { status: 400 })
     }
 
@@ -98,14 +89,12 @@ export async function POST(req: Request) {
 
     // If this is an interruption, add special instructions
     if (isInterruption) {
-      debug.log(`Handling interruption for voice: ${voice}`)
 
       // Modify the last user message to include an instruction for the model
       if (openaiMessages.length > 1 && openaiMessages[openaiMessages.length - 1].role === "user") {
         const lastUserMessage = openaiMessages[openaiMessages.length - 1].content
         openaiMessages[openaiMessages.length - 1].content = `[INTERRUPTED] ${lastUserMessage}`
 
-        debug.log(`Modified last user message to indicate interruption`)
       }
 
       // Add voice-specific interruption instructions
@@ -119,8 +108,6 @@ export async function POST(req: Request) {
       openaiMessages[0].content += interruptionInstructions[voice as keyof typeof interruptionInstructions]
     }
 
-    debug.log(`Starting OpenAI stream with ${voice} prompt`)
-    debug.log("System prompt:", systemPrompt.substring(0, 200) + "...")
 
     // Get pre-initialized OpenAI client and create streaming completion
     const openaiClient = getClient()
@@ -134,11 +121,9 @@ export async function POST(req: Request) {
       stream: true,
     })
 
-    debug.log("Stream created successfully, returning response")
 
     return createStreamResponse(stream)
   } catch (error: any) {
-    debug.log("Error in chat API route:", error)
     return new Response(
       JSON.stringify({ 
         error: "Internal server error", 

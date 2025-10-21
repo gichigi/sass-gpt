@@ -2,7 +2,7 @@
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://sassgpt.vercel.app)
 [![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
-[![OpenAI GPT-4](https://img.shields.io/badge/OpenAI-GPT--4-green?style=for-the-badge&logo=openai)](https://openai.com)
+[![OpenAI GPT-4o-mini](https://img.shields.io/badge/OpenAI-GPT--4o--mini-green?style=for-the-badge&logo=openai)](https://openai.com)
 
 > **AI Chat with Attitude** - Experience AI conversations with personality, sass, and zero filter.
 
@@ -45,7 +45,7 @@ A confident, corporate-sounding leader who turns every answer into a motivationa
 - **Styling**: [Tailwind CSS](https://tailwindcss.com)
 - **UI Components**: [Radix UI](https://www.radix-ui.com)
 - **Icons**: [Lucide React](https://lucide.dev)
-- **AI**: [OpenAI GPT-4](https://openai.com)
+- **AI**: [OpenAI GPT-4o-mini](https://openai.com)
 - **Deployment**: [Vercel](https://vercel.com)
 - **Language**: TypeScript
 
@@ -212,7 +212,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [OpenAI](https://openai.com) for the GPT-4 API
+- [OpenAI](https://openai.com) for the GPT-4o-mini API
 - [Vercel](https://vercel.com) for hosting and deployment
 - [Next.js](https://nextjs.org) team for the amazing framework
 - [Tailwind CSS](https://tailwindcss.com) for the utility-first CSS framework

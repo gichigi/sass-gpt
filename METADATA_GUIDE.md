@@ -24,7 +24,7 @@ description: "Experience AI conversations with personality, sass, and zero filte
 ### Keywords
 - AI chat, artificial intelligence, chatbot
 - AI personalities, sassy AI, AI with attitude
-- Conversational AI, GPT-4, OpenAI, chat application
+- Conversational AI, GPT-4o-mini, OpenAI, chat application
 
 ### Author & Creator Info
 - **Authors**: SassGPT Team
@@ -43,7 +43,7 @@ openGraph: {
   title: "SassGPT — AI with Attitude",
   description: "Experience AI conversations with personality...",
   images: [{
-    url: "https://sassgpt.vercel.app/og-image.png",
+    url: "https://sassgpt.vercel.app/chatgpt-logo.png",
     width: 1200,
     height: 630,
     alt: "SassGPT - AI with Attitude"
@@ -61,7 +61,7 @@ twitter: {
   creator: "@sassgpt",
   title: "SassGPT — AI with Attitude",
   description: "Experience AI conversations with personality...",
-  images: ["https://sassgpt.vercel.app/twitter-card.png"]
+  images: ["https://sassgpt.vercel.app/chatgpt-logo.png"]
 }
 ```
 
@@ -142,8 +142,8 @@ Disallow: /api/
 ## 8. Social Media Optimization
 
 ### Required Images (To Be Created)
-- **Open Graph Image**: 1200x630px (`og-image.png`)
-- **Twitter Card Image**: 1200x600px (`twitter-card.png`)
+- **Open Graph Image**: 1200x630px (`chatgpt-logo.png`)
+- **Twitter Card Image**: 1200x600px (`chatgpt-logo.png`)
 - **Screenshots**: Mobile (390x844px) & Desktop (1280x720px)
 
 ### Social Sharing Descriptions

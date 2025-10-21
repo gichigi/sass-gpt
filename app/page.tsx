@@ -19,7 +19,6 @@ import {
 import * as Toggle from '@radix-ui/react-toggle'
 import { TypewriterEffect } from "@/components/typewriter-effect"
 import { ChatSuggestions } from "@/components/chat-suggestions"
-import { debug } from "@/lib/debug"
 
 // Define our models
 const models = [
@@ -57,18 +56,11 @@ export default function ChatPage() {
   const [isHydrated, setIsHydrated] = useState(false)
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null)
   const [isTyping, setIsTyping] = useState(false)
+  const [userHasScrolled, setUserHasScrolled] = useState(false)
+  
   const selectedModelRef = useRef(selectedModel)
 
 
-  // Enhanced console logging for debugging
-  const logDebug = (info: string, data?: any) => {
-    const timestamp = new Date().toISOString()
-    if (data) {
-      debug.log(`[${timestamp}] ${info}`, data)
-    } else {
-      debug.log(`[${timestamp}] ${info}`)
-    }
-  }
 
   // Function to copy message content to clipboard
   const copyToClipboard = async (content: string, messageId: string) => {
@@ -84,7 +76,6 @@ export default function ChatPage() {
         }
       }))
       
-      logDebug(`Copied message ${messageId} to clipboard`)
 
       // Reset the copied state after 2 seconds
       setTimeout(() => {
@@ -97,7 +88,6 @@ export default function ChatPage() {
         }))
       }, 2000)
     } catch (err) {
-      logDebug(`Failed to copy message ${messageId} to clipboard: ${err}`)
     }
   }
 
@@ -110,7 +100,6 @@ export default function ChatPage() {
         thumbsUp: pressed ? true : null
       }
     }))
-    logDebug(`Thumbs up ${pressed ? 'pressed' : 'released'} for message ${messageId}`)
   }
 
   // Handle thumbs down feedback
@@ -122,7 +111,6 @@ export default function ChatPage() {
         thumbsUp: pressed ? false : null
       }
     }))
-    logDebug(`Thumbs down ${pressed ? 'pressed' : 'released'} for message ${messageId}`)
   }
 
   // Get feedback state for a message
@@ -152,16 +140,13 @@ export default function ChatPage() {
       setActiveMessageId(null)
     },
     onResponse: (response) => {
-      logDebug(`onResponse called with status: ${response.status}`)
       // When a new response starts, set it as the active message
       const lastMessage = chatMessages[chatMessages.length - 1]
       if (lastMessage && lastMessage.role === "assistant") {
-        logDebug(`Setting active message ID to: ${lastMessage.id}`)
         setActiveMessageId(lastMessage.id)
       }
     },
     onError: (err) => {
-      logDebug(`Error in chat: ${err.message}`)
       console.error("Chat error:", err)
     },
   })
@@ -194,26 +179,14 @@ export default function ChatPage() {
   useEffect(() => {
     // Only log when message count changes, not on every content update
     if (chatMessages.length !== prevMessagesLength.current) {
-      logDebug(`Messages updated, count: ${chatMessages.length}`)
       if (chatMessages.length > 0) {
         const lastMsg = chatMessages[chatMessages.length - 1]
-        logDebug(`Last message: role=${lastMsg.role}, id=${lastMsg.id}, content=${lastMsg.content.substring(0, 50)}...`)
       }
       prevMessagesLength.current = chatMessages.length
     }
   }, [chatMessages.length]) // Only depend on length, not full array
 
-  // Log loading state changes
-  useEffect(() => {
-    logDebug(`Loading state changed: ${isLoading}`)
-  }, [isLoading])
 
-  // Log errors
-  useEffect(() => {
-    if (error) {
-      logDebug(`Error occurred: ${error.message}`)
-    }
-  }, [error])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -233,7 +206,6 @@ export default function ChatPage() {
 
   // Handle suggestion selection - directly append message
   const handleSuggestionSelect = (suggestion: string) => {
-    logDebug(`Suggestion selected: ${suggestion}`)
     // Directly append the user message
     append({
       role: "user",
@@ -269,20 +241,62 @@ export default function ChatPage() {
     }
   }
 
-  // Simple auto-scroll during typing
+  // Detect when user manually scrolls
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current
+    
+    if (!chatContainer) {
+      const retryTimer = setTimeout(() => {
+        const retryContainer = chatContainerRef.current
+        if (retryContainer) {
+          setupScrollListener(retryContainer)
+        }
+      }, 100)
+      return () => clearTimeout(retryTimer)
+    }
+
+    setupScrollListener(chatContainer)
+  }, [])
+
+  const setupScrollListener = (container: HTMLElement) => {
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10
+      
+      if (!isAtBottom) {
+        setUserHasScrolled(true) // User scrolled away from bottom
+      } else {
+        setUserHasScrolled(false) // User is at bottom
+      }
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }
+
+  // Reset user scroll state when AI starts typing
   useEffect(() => {
     if (isTyping) {
+      setUserHasScrolled(false) // Reset when AI starts responding
+    }
+  }, [isTyping])
+
+  // Simple auto-scroll during typing (only if user hasn't scrolled)
+  useEffect(() => {
+    if (isTyping && !userHasScrolled) {
       const interval = setInterval(() => {
         scrollToBottom("auto")
       }, 100)
       return () => clearInterval(interval)
     }
-  }, [isTyping])
+  }, [isTyping, userHasScrolled])
 
   // Scroll to bottom when messages change or when typing
   useEffect(() => {
     if (chatMessages.length > 0 && showWelcome) {
-      logDebug("First message received, hiding welcome screen")
       setIsTransitioning(true)
       // Add a small delay for smooth transition
       setTimeout(() => {
@@ -293,7 +307,9 @@ export default function ChatPage() {
 
     // Use a small timeout to ensure DOM updates are complete
     const timer = setTimeout(() => {
-      scrollToBottom()
+      if (!userHasScrolled) { // Only scroll if user hasn't manually scrolled
+        scrollToBottom()
+      }
     }, 50)
 
     // Focus input after new message is received
@@ -303,7 +319,7 @@ export default function ChatPage() {
     prevMessagesLength.current = chatMessages.length
 
     return () => clearTimeout(timer)
-  }, [chatMessages, showWelcome, isInputFocused])
+  }, [chatMessages, showWelcome, isInputFocused, userHasScrolled])
 
   // Focus input on initial load
   useEffect(() => {
@@ -392,7 +408,6 @@ export default function ChatPage() {
 
   // Force a retry of the last message
   const handleRetry = () => {
-    logDebug("Manually retrying last message")
     reload()
   }
 
@@ -484,7 +499,7 @@ export default function ChatPage() {
       </header>
 
       {/* Chat area - scrollable middle section */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
         {showWelcome ? (
           <div className={`h-full flex flex-col items-center justify-center p-4 transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             <img
@@ -499,7 +514,6 @@ export default function ChatPage() {
           <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             {/* Chat messages - scrollable */}
             <div
-              ref={chatContainerRef}
               className="p-3 pb-0 w-full"
               style={{ overscrollBehavior: "auto" }}
             >

@@ -1,4 +1,3 @@
-import { debug } from "./debug"
 
 /**
  * Converts an OpenAI chat completion stream into a ReadableStream of text chunks
@@ -20,12 +19,10 @@ export function createStreamResponse(openaiStream: AsyncIterable<any>): Response
           
           // Check if the stream is done
           if (chunk.choices?.[0]?.finish_reason) {
-            debug.log("OpenAI stream finished:", chunk.choices[0].finish_reason)
             break
           }
         }
       } catch (error) {
-        debug.error("Error in OpenAI stream:", error)
         controller.error(error)
       } finally {
         controller.close()

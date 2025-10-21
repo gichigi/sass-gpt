@@ -1,6 +1,6 @@
 import type React from "react"
 import "./globals.css"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     "sassy AI",
     "AI with attitude",
     "conversational AI",
-    "GPT-4",
+    "GPT-4o-mini",
     "OpenAI",
     "chat application"
   ],
@@ -58,17 +58,6 @@ export const metadata: Metadata = {
     description: "ChatGPT with attitude. AI conversations with sass and character.",
     images: ["https://sassgpt.vercel.app/chatgpt-logo.png"],
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
-  colorScheme: "light dark",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -86,6 +75,14 @@ export const metadata: Metadata = {
   category: "technology",
   classification: "AI Chat Application",
   generator: "Next.js",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#ffffff",
 }
 
 export default function RootLayout({
@@ -121,8 +118,8 @@ export default function RootLayout({
     ],
     "screenshot": "https://sassgpt.vercel.app/chatgpt-logo.png",
     "softwareVersion": "1.0.0",
-    "datePublished": "2024-01-15",
-    "dateModified": "2024-01-15",
+    "datePublished": "2025-10-21",
+    "dateModified": "2025-10-21",
     "inLanguage": "en-US",
     "isAccessibleForFree": true,
     "browserRequirements": "Requires JavaScript. Requires HTML5.",
@@ -135,7 +132,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

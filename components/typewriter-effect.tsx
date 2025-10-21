@@ -18,6 +18,8 @@ export function TypewriterEffect({
 }: TypewriterEffectProps) {
   const [displayedContent, setDisplayedContent] = useState("")
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const startTimeRef = useRef<number>(Date.now())
+  const commaTimeRef = useRef<number | null>(null)
 
   // Reset on new message
   useEffect(() => {
@@ -25,6 +27,8 @@ export function TypewriterEffect({
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
     }
+    startTimeRef.current = Date.now()
+    commaTimeRef.current = null
     // Notify parent that typing has stopped (new message starting)
     onTypingChange?.(false)
   }, [messageId, onTypingChange])
@@ -42,6 +46,21 @@ export function TypewriterEffect({
 
     const nextChar = content[displayedContent.length]
     const delay = getTypingDelay(displayedContent, nextChar, character)
+    
+    // Debug logging for comma timing
+    const currentTime = Date.now()
+    const timeFromStart = currentTime - startTimeRef.current
+    
+    // Log when we hit the first comma
+    if (nextChar === ',' && !commaTimeRef.current) {
+      commaTimeRef.current = currentTime
+      console.log(`[DEBUG] First comma reached at ${timeFromStart}ms from start`)
+    }
+    
+    // Log the character after the comma
+    if (commaTimeRef.current && displayedContent.length > 0 && displayedContent[displayedContent.length - 1] === ',') {
+      console.log(`[DEBUG] Character after comma "${nextChar}" will appear in ${delay}ms (total: ${timeFromStart + delay}ms from start)`)
+    }
 
     timeoutRef.current = setTimeout(() => {
       setDisplayedContent(content.substring(0, displayedContent.length + 1))
@@ -84,10 +103,10 @@ function getTypingDelay(
 
   // Base delays by character
   const baseDelays = {
-    grandma: 80,
-    intellectual: 25, // 25% slower than exec (20 * 1.25)
-    teenager: 40,
-    exec: 20,
+    grandma: 40,        // reduced from 80
+    intellectual: 24,   // 20% slower than before (was 20)
+    teenager: 25,       // reduced from 40
+    exec: 20,           // keep same
   }
 
   let delay = baseDelays[character]

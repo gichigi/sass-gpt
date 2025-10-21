@@ -8,7 +8,7 @@ export interface Message {
 
 export interface UseSimpleChatOptions {
   api: string
-  voice?: string
+  voice?: string | (() => string)
   onFinish?: (message: Message) => void
   onResponse?: (response: Response) => void
   onError?: (error: Error) => void
@@ -129,7 +129,7 @@ export function useSimpleChat(options: UseSimpleChatOptions): UseSimpleChatRetur
       // Prepare request body
       const requestBody = {
         messages: updatedMessages,
-        voice: options.voice,
+        voice: typeof options.voice === 'function' ? options.voice() : options.voice,
         ...requestOptions,
       }
 

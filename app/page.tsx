@@ -53,9 +53,11 @@ const models = [
 export default function ChatPage() {
   // Initialize selectedModel - always start with first model to avoid hydration mismatch
   const [selectedModel, setSelectedModel] = useState(models[0])
+  const [isHydrated, setIsHydrated] = useState(false)
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   const [isTyping, setIsTyping] = useState(false)
+  const selectedModelRef = useRef(selectedModel)
 
 
   // Enhanced console logging for debugging
@@ -98,7 +100,7 @@ export default function ChatPage() {
     setMessages,
   } = useSimpleChat({
     api: `/api/chat`,
-    voice: selectedModel.id,
+    voice: () => selectedModelRef.current.id,
     onActiveMessageChange: (messageId) => {
       setActiveMessageId(messageId)
     },
@@ -120,8 +122,14 @@ export default function ChatPage() {
     },
   })
 
-  // Load saved model from localStorage after component mounts
+  // Update ref whenever selectedModel changes
   useEffect(() => {
+    selectedModelRef.current = selectedModel
+  }, [selectedModel])
+
+  // Load saved model from localStorage after hydration to avoid hydration mismatch
+  useEffect(() => {
+    setIsHydrated(true)
     const savedModelId = localStorage.getItem('selectedModel')
     if (savedModelId) {
       const savedModel = models.find(model => model.id === savedModelId && model.enabled)
@@ -168,6 +176,7 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [showWelcome, setShowWelcome] = useState(true)
   const [showModelSelector, setShowModelSelector] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const modelSelectorRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(chatMessages.length)
   const [isInputFocused, setIsInputFocused] = useState(false)
@@ -214,7 +223,12 @@ export default function ChatPage() {
   useEffect(() => {
     if (chatMessages.length > 0 && showWelcome) {
       logDebug("First message received, hiding welcome screen")
-      setShowWelcome(false)
+      setIsTransitioning(true)
+      // Add a small delay for smooth transition
+      setTimeout(() => {
+        setShowWelcome(false)
+        setIsTransitioning(false)
+      }, 150)
     }
 
     // Use a small timeout to ensure DOM updates are complete
@@ -299,6 +313,7 @@ export default function ChatPage() {
     if (model.enabled) {
       setSelectedModel(model)
       setMessages([]) // Clear messages when switching models
+      setIsTransitioning(true)
       setShowWelcome(true)
       setShowModelSelector(false)
       
@@ -307,8 +322,11 @@ export default function ChatPage() {
         localStorage.setItem('selectedModel', model.id)
       }
       
-      // Focus back on input after selecting model
-      setTimeout(() => inputRef.current?.focus(), 100)
+      // Complete transition and focus input
+      setTimeout(() => {
+        setIsTransitioning(false)
+        inputRef.current?.focus()
+      }, 150)
     }
   }
 
@@ -333,8 +351,10 @@ export default function ChatPage() {
           onClick={() => {
             stop() // Stop any ongoing stream
             setMessages([]) // Clear chat history
+            setIsTransitioning(true)
             setShowWelcome(true) // Show welcome screen
             setIsTyping(false) // Reset typing state
+            setTimeout(() => setIsTransitioning(false), 150)
           }}
           className="flex items-center hover:bg-gray-100 rounded-md px-2 py-1 transition-colors"
         >
@@ -406,7 +426,7 @@ export default function ChatPage() {
       {/* Main content area - flexible height */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {showWelcome ? (
-          <div className="h-full flex flex-col overflow-auto">
+          <div className={`h-full flex flex-col overflow-auto transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             <div className="flex-1 flex flex-col items-center justify-center p-4">
               <img
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
@@ -449,7 +469,7 @@ export default function ChatPage() {
             </div>
           </div>
         ) : (
-          <>
+          <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             {/* Chat messages - scrollable */}
             <div
               ref={chatContainerRef}
@@ -482,10 +502,6 @@ export default function ChatPage() {
                               key={message.id}
                             />
 
-                            {/* Show loading indicator if message is active but empty */}
-                            {activeMessageId === message.id && message.content === "" && (
-                              <div className="animate-pulse text-gray-400">Thinking...</div>
-                            )}
 
                             {/* Show error if there is one */}
                             {error && activeMessageId === message.id && (
@@ -571,7 +587,7 @@ export default function ChatPage() {
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

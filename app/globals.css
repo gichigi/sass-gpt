@@ -36,7 +36,8 @@ a {
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Garamond, ui-sans-serif, -apple-system, system-ui, Segoe UI, Helvetica, Apple Color Emoji, Arial, sans-serif, Segoe UI Emoji, Segoe UI Symbol;
+  font-variation-settings: normal;
 }
 
 /* Fix for iOS viewport height issues */

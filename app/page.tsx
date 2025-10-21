@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useSimpleChat } from "@/hooks/use-simple-chat"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import {
   ThumbsUp,
   ThumbsDown,
@@ -180,10 +180,27 @@ export default function ChatPage() {
   const modelSelectorRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(chatMessages.length)
   const [isInputFocused, setIsInputFocused] = useState(false)
+  
+  // Smart auto-scroll state
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const scrollThreshold = 100 // pixels from bottom
+  
+  // Add a simple auto-scroll during typing
+  useEffect(() => {
+    if (isTyping && shouldAutoScroll) {
+      const interval = setInterval(() => {
+        scrollToBottom("auto")
+      }, 100) // Scroll every 100ms during typing
+      
+      return () => clearInterval(interval)
+    }
+  }, [isTyping, shouldAutoScroll])
 
   // Handle suggestion selection - directly append message
   const handleSuggestionSelect = (suggestion: string) => {
     logDebug(`Suggestion selected: ${suggestion}`)
+    // Force scroll to bottom when user selects a suggestion
+    setShouldAutoScroll(true)
     // Directly append the user message
     append({
       role: "user",
@@ -195,6 +212,8 @@ export default function ChatPage() {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!isLoading && !isTyping) {
+      // Force scroll to bottom when user sends a message
+      setShouldAutoScroll(true)
       handleSubmit(e)
     }
   }
@@ -212,12 +231,59 @@ export default function ChatPage() {
     }
   }, [])
 
+  // Check if user is near the bottom of the chat
+  const checkIfNearBottom = useCallback(() => {
+    if (!chatContainerRef.current) return true // Default to true if container not ready
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    const isNearBottom = distanceFromBottom < scrollThreshold
+    logDebug(`Distance from bottom: ${distanceFromBottom}, threshold: ${scrollThreshold}, nearBottom: ${isNearBottom}`)
+    return isNearBottom
+  }, [scrollThreshold])
+
   // Improved scroll handling
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior, block: "end" })
     }
   }
+
+  // Handle scroll events to track user position
+  const handleScroll = useCallback(() => {
+    const isNearBottom = checkIfNearBottom()
+    setShouldAutoScroll(isNearBottom)
+    
+    // Debug scroll info
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
+      logDebug(`Scroll: top=${scrollTop}, height=${scrollHeight}, client=${clientHeight}, nearBottom=${isNearBottom}`)
+    }
+  }, [checkIfNearBottom])
+
+  // Add scroll event listener
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current
+    if (chatContainer) {
+      chatContainer.addEventListener('scroll', handleScroll, { passive: true })
+      return () => chatContainer.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll])
+
+  // Debug container dimensions when messages change and force scroll for new messages
+  useEffect(() => {
+    if (chatContainerRef.current && chatMessages.length > 0) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
+      logDebug(`Container dimensions: scrollHeight=${scrollHeight}, clientHeight=${clientHeight}, scrollable=${scrollHeight > clientHeight}`)
+      
+      // Force scroll to bottom when new messages are added
+      if (chatMessages.length > prevMessagesLength.current) {
+        logDebug(`New message added, forcing scroll to bottom`)
+        setTimeout(() => {
+          scrollToBottom("smooth")
+        }, 100)
+      }
+    }
+  }, [chatMessages.length])
 
   // Scroll to bottom when messages change or when typing
   useEffect(() => {
@@ -231,19 +297,23 @@ export default function ChatPage() {
       }, 150)
     }
 
-    // Use a small timeout to ensure DOM updates are complete
-    const timer = setTimeout(() => {
-      scrollToBottom()
-    }, 10)
+    // Always auto-scroll on new messages, but respect user scroll position
+    if (chatMessages.length > 0) {
+      // Use a small timeout to ensure DOM updates are complete
+      const timer = setTimeout(() => {
+        if (shouldAutoScroll) {
+          scrollToBottom()
+        }
+      }, 50) // Slightly longer timeout for better reliability
+      return () => clearTimeout(timer)
+    }
 
     // Focus input after new message is received
     if (chatMessages.length > prevMessagesLength.current) {
       inputRef.current?.focus()
     }
     prevMessagesLength.current = chatMessages.length
-
-    return () => clearTimeout(timer)
-  }, [chatMessages, showWelcome, isInputFocused])
+  }, [chatMessages, showWelcome, isInputFocused, shouldAutoScroll])
 
   // Focus input on initial load
   useEffect(() => {
@@ -272,31 +342,33 @@ export default function ChatPage() {
   useEffect(() => {
     const handleResize = () => {
       // When the virtual keyboard appears on mobile, we want to scroll to the bottom
-      if (isInputFocused) {
+      // but only if user is near bottom or it's a new message
+      if (isInputFocused && shouldAutoScroll) {
         scrollToBottom("auto")
       }
     }
 
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
-  }, [isInputFocused])
+  }, [isInputFocused, shouldAutoScroll])
 
   // Handle visibility changes (e.g., when user switches tabs/apps and comes back)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && !showWelcome) {
+      if (document.visibilityState === "visible" && !showWelcome && shouldAutoScroll) {
         scrollToBottom("auto")
       }
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [showWelcome])
+  }, [showWelcome, shouldAutoScroll])
 
   // Prevent zoom on input focus
   useEffect(() => {
     // This helps prevent the zoom issue on iOS Safari
     const preventZoom = (e: TouchEvent) => {
+      // Only prevent zoom gestures (pinch), not regular scrolling
       if (e.touches.length > 1) {
         e.preventDefault()
       }
@@ -316,6 +388,7 @@ export default function ChatPage() {
       setIsTransitioning(true)
       setShowWelcome(true)
       setShowModelSelector(false)
+      setShouldAutoScroll(true) // Reset auto-scroll for new conversation
       
       // Save to localStorage
       if (typeof window !== 'undefined') {
@@ -344,7 +417,7 @@ export default function ChatPage() {
   }, [])
 
   return (
-    <div className="flex flex-col h-screen bg-white w-full overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-white w-full">
       {/* Header - fixed height */}
       <header className="border-b border-gray-200 py-3 px-4 flex items-center shrink-0">
         <button 
@@ -354,6 +427,7 @@ export default function ChatPage() {
             setIsTransitioning(true)
             setShowWelcome(true) // Show welcome screen
             setIsTyping(false) // Reset typing state
+            setShouldAutoScroll(true) // Reset auto-scroll for new conversation
             setTimeout(() => setIsTransitioning(false), 150)
           }}
           className="flex items-center hover:bg-gray-100 rounded-md px-2 py-1 transition-colors"
@@ -424,7 +498,7 @@ export default function ChatPage() {
       </header>
 
       {/* Main content area - flexible height */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         {showWelcome ? (
           <div className={`h-full flex flex-col overflow-auto transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -474,7 +548,7 @@ export default function ChatPage() {
             <div
               ref={chatContainerRef}
               className="flex-1 overflow-y-auto p-3 pb-0 w-full"
-              style={{ overscrollBehavior: "contain" }}
+              style={{ overscrollBehavior: "auto" }}
             >
               <div className="max-w-2xl mx-auto">
                 {chatMessages.map((message, index) => (

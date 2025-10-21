@@ -420,10 +420,10 @@ export default function ChatPage() {
         >
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
-            alt="ChatGPT Logo"
+            alt="SassGPT Logo"
             className="w-5 h-5"
           />
-          <span className="font-semibold ml-2 text-sm">ChatGPT</span>
+          <span className="font-semibold ml-2 text-sm">SassGPT</span>
         </button>
 
         <div className="relative ml-3" ref={modelSelectorRef}>
@@ -489,7 +489,7 @@ export default function ChatPage() {
           <div className={`h-full flex flex-col items-center justify-center p-4 transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
-              alt="ChatGPT Logo"
+              alt="SassGPT Logo"
               className="w-10 h-10 mb-3"
             />
             <h1 className="text-2xl font-semibold text-gray-800 mb-6">What do you want?</h1>
@@ -516,7 +516,7 @@ export default function ChatPage() {
                           <div className="mr-2 mt-1 flex-shrink-0">
                             <img
                               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-PYW7C7zMZvkQ9hPVaBVfq4nruDds2V.png"
-                              alt="ChatGPT Logo"
+                              alt="SassGPT Logo"
                               className="w-5 h-5"
                             />
                           </div>
@@ -634,7 +634,7 @@ export default function ChatPage() {
             </div>
           </form>
           <div className="text-[10px] text-center text-gray-500 mt-1.5">
-            ChatGPT can be rude. Don't take it personally.
+            SassGPT can be rude. Don't take it personally.
           </div>
         </div>
       </div>

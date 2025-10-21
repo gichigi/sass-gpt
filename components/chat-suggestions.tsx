@@ -3,7 +3,7 @@
 import { ArrowRight } from "lucide-react"
 import { useState, useEffect } from "react"
 
-// Define all possible suggestions - general modern ChatGPT queries
+// Define all possible suggestions - general modern SassGPT queries
 const ALL_SUGGESTIONS = [
   {
     title: "Write a cover letter for a software engineering job",

@@ -6,13 +6,86 @@ import { Inter } from "next/font/google"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ChatGPT - AI Chat",
-  description: "Chat with AI models that don't hold back",
+  title: "SassGPT — AI with Attitude",
+  description: "ChatGPT with attitude. AI conversations with sass and character.",
+  keywords: [
+    "AI chat",
+    "artificial intelligence",
+    "chatbot",
+    "AI personalities",
+    "sassy AI",
+    "AI with attitude",
+    "conversational AI",
+    "GPT-4",
+    "OpenAI",
+    "chat application"
+  ],
+  authors: [{ name: "SassGPT Team" }],
+  creator: "SassGPT",
+  publisher: "SassGPT",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://sassgpt.vercel.app",
+    siteName: "SassGPT",
+    title: "SassGPT — AI with Attitude",
+    description: "ChatGPT with attitude. AI conversations with sass and character.",
+    images: [
+      {
+        url: "https://sassgpt.vercel.app/chatgpt-logo.png",
+        width: 1200,
+        height: 630,
+        alt: "SassGPT - AI with Attitude",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@sassgpt",
+    creator: "@sassgpt",
+    title: "SassGPT — AI with Attitude",
+    description: "ChatGPT with attitude. AI conversations with sass and character.",
+    images: ["https://sassgpt.vercel.app/chatgpt-logo.png"],
+  },
   viewport: {
     width: "device-width",
     initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
   },
-  generator: "v0.dev",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
+  colorScheme: "light dark",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  alternates: {
+    canonical: "https://sassgpt.vercel.app",
+  },
+  category: "technology",
+  classification: "AI Chat Application",
+  generator: "Next.js",
 }
 
 export default function RootLayout({
@@ -20,10 +93,55 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "SassGPT",
+    "alternateName": "SassGPT — AI with Attitude",
+    "description": "Experience AI conversations with personality, sass, and zero filter. Chat with distinct AI characters that bring authentic personality to every conversation.",
+    "url": "https://sassgpt.vercel.app",
+    "applicationCategory": "ChatApplication",
+    "operatingSystem": "Web Browser",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "creator": {
+      "@type": "Organization",
+      "name": "SassGPT Team"
+    },
+    "featureList": [
+      "AI Chat with Multiple Personalities",
+      "Real-time Streaming Responses",
+      "Mobile-First Design",
+      "Modern UI/UX",
+      "Auto-scroll Functionality",
+      "Copy & Feedback System"
+    ],
+    "screenshot": "https://sassgpt.vercel.app/chatgpt-logo.png",
+    "softwareVersion": "1.0.0",
+    "datePublished": "2024-01-15",
+    "dateModified": "2024-01-15",
+    "inLanguage": "en-US",
+    "isAccessibleForFree": true,
+    "browserRequirements": "Requires JavaScript. Requires HTML5.",
+    "softwareRequirements": "Web browser",
+    "memoryRequirements": "512MB RAM",
+    "storageRequirements": "50MB",
+    "permissions": "No special permissions required"
+  }
+
   return (
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData),
+          }}
+        />
       </head>
       <body className={inter.className}>{children}</body>
     </html>

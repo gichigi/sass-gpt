@@ -9,61 +9,61 @@ const ALL_SUGGESTIONS = [
     title: "Write a cover letter for a software engineering job",
   },
   {
-    title: "Explain how large language models work",
+    title: "What's the best way to start a conversation with someone new?",
   },
   {
-    title: "Help me debug this React useEffect hook",
+    title: "What should I do if I'm feeling stressed and overwhelmed?",
   },
   {
     title: "Create a weekly meal plan with a shopping list",
   },
   {
-    title: "Suggest 5 books similar to 'Project Hail Mary'",
+    title: "How do I politely say no to something I don't want to do?",
   },
   {
-    title: "Write a Python script to analyze CSV data",
+    title: "What's the best way to give someone bad news?",
   },
   {
     title: "How can I improve my productivity working from home?",
   },
   {
-    title: "Explain blockchain technology in simple terms",
+    title: "Explain the theory of evolution in simple terms",
   },
   {
     title: "Help me create a workout routine for beginners",
   },
   {
-    title: "What are the best practices for cybersecurity in 2025?",
+    title: "What caused the fall of the Roman Empire?",
   },
   {
-    title: "Write a prompt for generating an image of a futuristic city",
+    title: "How do vaccines work in the human body?",
   },
   {
     title: "Suggest healthy breakfast ideas that take under 10 minutes",
   },
   {
-    title: "Help me plan a 7-day trip to Japan",
+    title: "What was the Cold War and why did it happen?",
   },
   {
-    title: "Explain the differences between SQL and NoSQL databases",
+    title: "Explain blockchain technology in simple terms",
   },
   {
     title: "How do I start investing with a small budget?",
   },
   {
-    title: "Write a short story about AI and human collaboration",
+    title: "What's the best way to handle criticism from others?",
   },
   {
     title: "What are some effective techniques for learning a new language?",
   },
   {
-    title: "Help me understand the basics of quantum computing",
+    title: "Help me plan a 7-day trip to Japan",
   },
   {
     title: "Create a social media content calendar for a small business",
   },
   {
-    title: "What are the latest advancements in renewable energy?",
+    title: "Explain how large language models work",
   },
 ] // DO NOT MODIFY THESE SUGGESTIONS IN FUTURE UPDATES
 

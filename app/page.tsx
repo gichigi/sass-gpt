@@ -630,7 +630,7 @@ export default function ChatPage() {
               onChange={handleInputChange}
               onFocus={() => setIsInputFocused(true)}
               onBlur={() => setIsInputFocused(false)}
-              placeholder="Go on then..."
+              placeholder="Ask anything..."
               className="flex-1 py-2 px-1 bg-transparent outline-none text-[16px]"
             />
             <div className="flex items-center px-2">

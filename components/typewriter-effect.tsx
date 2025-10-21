@@ -7,12 +7,14 @@ interface TypewriterEffectProps {
   content: string
   character: "teenager" | "grandma" | "intellectual" | "exec"
   messageId: string
+  onTypingChange?: (isTyping: boolean) => void
 }
 
 export function TypewriterEffect({
   content,
   character,
   messageId,
+  onTypingChange,
 }: TypewriterEffectProps) {
   const [displayedContent, setDisplayedContent] = useState("")
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -23,13 +25,20 @@ export function TypewriterEffect({
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
     }
-  }, [messageId])
+    // Notify parent that typing has stopped (new message starting)
+    onTypingChange?.(false)
+  }, [messageId, onTypingChange])
 
   // Type characters with delays
   useEffect(() => {
     if (displayedContent.length >= content.length) {
-      return // Already fully typed
+      // Finished typing - notify parent
+      onTypingChange?.(false)
+      return
     }
+
+    // Started or continuing typing - notify parent
+    onTypingChange?.(true)
 
     const nextChar = content[displayedContent.length]
     const delay = getTypingDelay(displayedContent, nextChar, character)
@@ -43,7 +52,7 @@ export function TypewriterEffect({
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [content, displayedContent, character])
+  }, [content, displayedContent, character, onTypingChange])
 
   // Cleanup on unmount
   useEffect(() => {

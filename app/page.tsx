@@ -55,6 +55,7 @@ export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState(models[0])
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const [isTyping, setIsTyping] = useState(false)
 
 
   // Enhanced console logging for debugging
@@ -130,6 +131,11 @@ export default function ChatPage() {
     }
   }, [])
 
+  // Reset typing state when chat context changes (model switch, new messages, component mount)
+  useEffect(() => {
+    setIsTyping(false)
+  }, [chatMessages.length, selectedModel.id])
+
 
 
   // Log messages for debugging (only on significant changes)
@@ -179,7 +185,7 @@ export default function ChatPage() {
   // Handle form submission - simplified
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoading) {
+    if (!isLoading && !isTyping) {
       handleSubmit(e)
     }
   }
@@ -312,6 +318,13 @@ export default function ChatPage() {
     reload()
   }
 
+  // Cleanup typing state on component unmount
+  useEffect(() => {
+    return () => {
+      setIsTyping(false)
+    }
+  }, [])
+
   return (
     <div className="flex flex-col h-screen bg-white w-full overflow-hidden">
       {/* Header - fixed height */}
@@ -321,6 +334,7 @@ export default function ChatPage() {
             stop() // Stop any ongoing stream
             setMessages([]) // Clear chat history
             setShowWelcome(true) // Show welcome screen
+            setIsTyping(false) // Reset typing state
           }}
           className="flex items-center hover:bg-gray-100 rounded-md px-2 py-1 transition-colors"
         >
@@ -464,6 +478,7 @@ export default function ChatPage() {
                               content={message.content}
                               character={selectedModel.id as "teenager" | "grandma" | "intellectual" | "exec"}
                               messageId={message.id}
+                              onTypingChange={setIsTyping}
                               key={message.id}
                             />
 
@@ -541,11 +556,11 @@ export default function ChatPage() {
                     <button
                       type="submit"
                       className={`p-1 rounded-full ${
-                        isLoading 
+                        (isLoading || isTyping)
                           ? "text-gray-300 cursor-not-allowed" 
                           : "text-gray-500 hover:bg-gray-100"
                       }`}
-                      disabled={isLoading}
+                      disabled={isLoading || isTyping}
                     >
                       <Send size={16} />
                     </button>
